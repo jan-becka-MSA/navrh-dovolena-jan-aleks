@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Naše první společná dovolená</title>
+
+  <link rel="preconnect" href="https://unpkg.com" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    :root{
+      --bg:#f8f3ec;
+      --panel:#fffdf8;
+      --ink:#2b2926;
+      --muted:#746f68;
+      --line:#e7dccd;
+      --accent:#ad6a63;
+      --accent2:#6f8d7b;
+      --madrid:#9170a8;
+      --shadow:0 14px 42px rgba(45,35,25,.10);
+      --radius:22px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color:var(--ink);
+      background:var(--bg);
+      overflow:hidden;
+    }
+    .app{
+      height:100vh;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 420px;
+      gap:16px;
+      padding:16px;
+    }
+    .map-wrap{
+      position:relative;
+      border-radius:var(--radius);
+      overflow:hidden;
+      background:#e6e0d6;
+      box-shadow:var(--shadow);
+      min-height:0;
+    }
+    #map{height:100%;width:100%}
+    .title-card{
+      position:absolute;
+      left:20px;
+      top:20px;
+      z-index:700;
+      max-width:430px;
+      background:rgba(255,253,248,.92);
+      backdrop-filter:blur(10px);
+      border:1px solid rgba(231,220,205,.95);
+      border-radius:20px;
+      padding:16px 18px;
+      box-shadow:0 12px 34px rgba(0,0,0,.10);
+    }
+    .kicker{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:800;margin-bottom:8px}
+    h1{font-size:clamp(25px,3.2vw,42px);line-height:1.03;margin:0 0 10px;font-weight:850;letter-spacing:-.04em}
+    .subtitle{margin:0;color:var(--muted);font-size:14px;line-height:1.55}
+    .legend{
+      position:absolute;left:20px;bottom:20px;z-index:700;background:rgba(255,253,248,.92);
+      border:1px solid var(--line);border-radius:16px;padding:10px 12px;box-shadow:0 10px 28px rgba(0,0,0,.10);
+      display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);font-weight:700;
+    }
+    .dot{display:inline-block;width:10px;height:10px;border-radius:99px;margin-right:6px;vertical-align:-1px;background:var(--accent)}
+    .dot.flight{background:var(--accent2)} .dot.optional{background:var(--madrid)}
+    .sidebar{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:auto;
+      padding:16px;
+    }
+    .intro{padding:6px 6px 16px;border-bottom:1px solid var(--line);margin-bottom:12px}
+    .intro h2{margin:0 0 8px;font-size:21px;letter-spacing:-.03em}
+    .intro p{margin:0;color:var(--muted);line-height:1.55;font-size:13.5px}
+    .day{
+      border:1px solid var(--line);
+      border-radius:17px;
+      padding:14px;
+      margin:10px 0;
+      background:#fffaf4;
+      cursor:pointer;
+      transition:.16s ease;
+    }
+    .day:hover{transform:translateY(-1px);box-shadow:0 9px 20px rgba(40,30,20,.08);border-color:#dcc8b2}
+    .day.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(173,106,99,.13);background:#fff6f2}
+    .day.optional-card{background:#fbf7ff;border-color:#e5d8ef}
+    .day.optional-card.active{border-color:var(--madrid);box-shadow:0 0 0 3px rgba(145,112,168,.13)}
+    .day-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px}
+    .day-num{font-size:12px;font-weight:850;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+    .optional-card .day-num{color:var(--madrid)}
+    .date{font-size:12px;color:var(--muted);white-space:nowrap}
+    .day h3{margin:0 0 7px;font-size:17px;letter-spacing:-.02em}
+    .day ul{margin:0;padding-left:18px;color:var(--muted);font-size:13.5px;line-height:1.55}
+    .day li{margin:3px 0}
+    .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+    .tag{font-size:11px;padding:5px 8px;border-radius:999px;background:#f1e6dc;color:#5d544c;font-weight:700}
+    .optional-card .tag{background:#eee3f5}
+    .maps-link{display:inline-block;margin-top:10px;color:var(--accent);font-weight:800;text-decoration:none;font-size:13px}
+    .optional-card .maps-link{color:var(--madrid)}
+    .maps-link:hover{text-decoration:underline}
+    .note{margin:16px 4px 2px;padding:13px;border-left:3px solid var(--accent2);color:var(--muted);font-size:13px;line-height:1.55;background:#f4f0e8;border-radius:0 14px 14px 0}
+    .leaflet-popup-content-wrapper{border-radius:16px;padding:0;overflow:hidden}
+    .leaflet-popup-content{margin:0;width:245px!important}
+    .popup-img{height:120px;background-size:cover;background-position:center}
+    .popup-body{padding:12px 13px 13px}
+    .popup-body strong{display:block;font-size:15px;margin-bottom:5px}
+    .popup-body span{display:block;color:#666;font-size:12px;line-height:1.4}
+    .popup-body a{display:inline-block;margin-top:8px;color:#ad6a63;font-weight:800;text-decoration:none;font-size:12px}
+    .route-label{background:rgba(255,253,248,.94);border:1px solid var(--line);padding:7px 10px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.12);font-size:12px;font-weight:850;color:#2d2d2d}
+    @media(max-width:920px){
+      body{overflow:auto}.app{height:auto;display:flex;flex-direction:column;padding:12px}.map-wrap{height:58vh;min-height:420px}.sidebar{max-height:none;overflow:visible}.title-card{left:12px;right:12px;top:12px;max-width:none;padding:14px}.legend{left:12px;right:12px;bottom:12px}.popup-img{height:105px}
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="map-wrap" aria-label="Interaktivní mapa trasy">
+      <div id="map"></div>
+      <div class="title-card">
+        <div class="kicker">Praha → Bilbao → sever Španělska</div>
+        <h1>Naše první společná dovolená</h1>
+        <p class="subtitle">Data zatím nejsou rozhodnutá. Poletíme z Prahy do Bilbaa, půjčíme si auto a ubytování vybereme podle ceny a lokality — buď přímo ve městě, nebo někde klidněji mimo.</p>
+      </div>
+      <div class="legend">
+        <span><i class="dot flight"></i>let</span>
+        <span><i class="dot"></i>hlavní trasa autem</span>
+        <span><i class="dot optional"></i>volitelně Madrid</span>
+      </div>
+    </section>
+
+    <aside class="sidebar">
+      <div class="intro">
+        <h2>Itinerář den po dni</h2>
+        <p>Mapa je seřazená podle trasy: Bilbao → pobřeží → San Sebastián → Hondarribia → Santander → Picos → Bilbao. Kulturní akce, divadlo nebo festivaly můžeme doplnit podle konkrétního termínu.</p>
+      </div>
+
+      <article class="day active" data-place="bilbao">
+        <div class="day-top"><span class="day-num">Den 1</span><span class="date">datum doplníme</span></div>
+        <h3>Bilbao</h3>
+        <ul>
+          <li>Přílet z Prahy</li>
+          <li>Vyzvednout auto</li>
+          <li>Ubytování na hotelu</li>
+          <li>Procházka po okolí, možná beach day podle času</li>
+          <li>Večeře u vody / pintxos</li>
+        </ul>
+        <div class="tags"><span class="tag">přílet</span><span class="tag">auto</span><span class="tag">klidný start</span></div>
+        <a class="maps-link" href="https://www.google.com/maps/search/?api=1&query=Bilbao%2C%20Spain" target="_blank" rel="noopener">Otevřít v Google Maps</a>
+      </article>
+
+      <article class="day" data-place="gaztelugatxe">
+        <div class="day-top"><span class="day-num">Den 2</span><span class="date">datum doplníme</span></div>
+        <h3>Gaztelugatxe + Urdaibai</h3>
+        <ul>
+          <li>Snídaně na hotelu</li>
+          <li>Krátká procházka ke Gaztelugatxe</li>
+          <li>Pobřeží, fotky, výhledy</li>
+          <li>Mundaka / Bermeo na snack</li>
+          <li>Večer podle nálady: klid, moře, drink</li>
+        </ul>
+        <div class="tags"><span class="tag">pobřeží</span><span class="tag">výhledy</span><span class="tag">lehká chůze</span></div>
+        <a class="maps-link" href="https://www.google.com/maps/search/?api=1&query=San%20Juan%20de%20Gaztelugatxe" target="_blank" rel="noopener">Otevřít v Google Maps</a>
+      </article>
+
+      <article class="day" data-place="sansebastian">
+        <div class="day-top"><span class="day-num">Den 3</span><span class="date">datum doplníme</span></div>
+        <h3>San Sebastián</h3>
+        <ul>
+          <li>Přesun do San Sebastiánu</li>
+          <li>Ubytování</li>
+          <li>La Concha beach day</li>
+          <li>Procházka po promenádě</li>
+          <li>Pintxos večer ve starém městě</li>
+        </ul>
+        <div class="tags"><span class="tag">pláž</span><span class="tag">pintxos</span><span class="tag">večer venku</span></div>
+        <a class="maps-link" href="https://www.google.com/maps/search/?api=1&query=San%20Sebastian%2C%20Spain" target="_blank" rel="noopener">Otevřít v Google Maps</a>
+      </article>
+
+      <article class="day" data-place="sansebastian">
+        <div class="day-top"><span class="day-num">Den 4</span><span class="date">datum doplníme</span></div>
+        <h3>San Sebastián volněji</h3>
+        <ul>
+          <li>Snídaně na hotelu</li>
+          <li>Beach day</li>
+          <li>Snack — ty na hotelu? 👀</li>
+          <li>Procházka po pobřeží / Monte Igueldo</li>
+          <li>Možné divadlo, koncert nebo festival podle termínu</li>
+        </ul>
+        <div class="tags"><span class="tag">relax</span><span class="tag">pobřeží</span><span class="tag">kultura optional</span></div>
+        <a class="maps-link" href="https://www.google.com/maps/search/?api=1&query=La%20Concha%20San%20Sebastian" target="_blank" rel="noopener">Otevřít v Google Maps</a>
+      </article>
+
+      <article class="day" data-place="hondarribia">
+        <div class="day-top"><span class="day-num">Den 5</span><span class="date">datum doplníme</span></div>
+        <h3>Hondarribia / Pasaia</h3>
+        <ul>
+          <li>Krátký výlet ze San Sebastiánu</li>
+          <li>Barevné domy, přístav, staré město</li>
+          <li>Oběd nebo snack u vody</li>
+          <li>Lehká pobřežní procházka</li>
+          <li>Návrat na večer</li>
+        </ul>
+        <div class="tags"><span class="tag">malé město</span><span class="tag">přístav</span><span class="tag">bez stresu</span></div>
+        <a class="maps-link" href="https://www.google.com/maps/search/?api=1&query=Hondarribia%2C%20Spain" target="_blank" rel="noopener">Otevřít v Google Maps</a>
+      </article>
+
+      <article class="day" data-place="santander">
+        <div class="day-top"><span class="day-num">Den 6</span><span class="date">datum doplníme</span></div>
+        <h3>Santander</h3>
+        <ul>
+          <li>Přesun po pobřeží směrem na západ</li>
+          <li>Playa del Sardinero</li>
+          <li>Magdalena poloostrov</li>
+          <li>Večeře u moře</li>
+          <li>Případně kultura / festival podle data</li>
+        </ul>
+        <div class="tags"><span class="tag">pláž</span><span class="tag">moře</span><span class="tag">večer u vody</span></div>
+        <a class="maps-link" href="https://www.google.com/maps/search/?api=1&query=Santander%2C%20Spain" target="_blank" rel="noopener">Otevřít v Google Maps</a>
+      </article>
+
+      <article class="day" data-place="picos">
+        <div class="day-top"><span class="day-num">Den 7</span><span class="date">datum doplníme</span></div>
+        <h3>Picos de Europa</h3>
+        <ul>
+          <li>Přesun do hor</li>
+          <li>Jezera Covadonga / vyhlídky</li>
+          <li>Lehčí túra podle počasí</li>
+          <li>Večer někde v klidu mimo město</li>
+        </ul>
+        <div class="tags"><span class="tag">hory</span><span class="tag">hiking</span><span class="tag">výhledy</span></div>
+        <a class="maps-link" href="https://www.google.com/maps/search/?api=1&query=Covadonga%20Lakes%2C%20Asturias%2C%20Spain" target="_blank" rel="noopener">Otevřít v Google Maps</a>
+      </article>
+
+      <article class="day" data-place="bilbao">
+        <div class="day-top"><span class="day-num">Den 8</span><span class="date">datum doplníme</span></div>
+        <h3>Návrat do Bilbaa</h3>
+        <ul>
+          <li>Cesta zpět směr Bilbao</li>
+          <li>Vrácení auta podle odletu</li>
+          <li>Guggenheim / poslední procházka, když bude čas</li>
+          <li>Odlet domů, nebo pokračování dál</li>
+        </ul>
+        <div class="tags"><span class="tag">návrat</span><span class="tag">rezerva</span><span class="tag">odlet</span></div>
+        <a class="maps-link" href="https://www.google.com/maps/search/?api=1&query=Bilbao%20Airport" target="_blank" rel="noopener">Otevřít v Google Maps</a>
+      </article>
+
+      <article class="day optional-card" data-place="madrid">
+        <div class="day-top"><span class="day-num">Volitelně +2 dny</span><span class="date">pokud bude dobrý let</span></div>
+        <h3>Madrid místo návratu přes Bilbao</h3>
+        <ul>
+          <li>Přesun do Madridu</li>
+          <li>2 pomalejší dny ve městě</li>
+          <li>Retiro, tapas, večerní procházky</li>
+          <li>Možné divadlo / koncert / kulturní akce</li>
+          <li>Odlet domů možná přímo z Madridu</li>
+        </ul>
+        <div class="tags"><span class="tag">optional</span><span class="tag">město</span><span class="tag">alternativní odlet</span></div>
+        <a class="maps-link" href="https://www.google.com/maps/search/?api=1&query=Madrid%2C%20Spain" target="_blank" rel="noopener">Otevřít v Google Maps</a>
+      </article>
+
+      <div class="note">Mapa používá bezplatný interaktivní podklad OpenStreetMap. U každého bodu je odkaz do Google Maps pro fotky, recenze a navigaci.</div>
+    </aside>
+  </main>
+
+  <script>
+    const places = {
+      prague: {
+        name: "Praha",
+        coords: [50.0755, 14.4378],
+        text: "Start cesty — let do Bilbaa.",
+        img: "https://images.unsplash.com/photo-1541849546-216549ae216d?auto=format&fit=crop&w=700&q=70",
+        maps: "https://www.google.com/maps/search/?api=1&query=Prague%2C%20Czechia"
+      },
+      bilbao: {
+        name: "Bilbao",
+        coords: [43.2630, -2.9350],
+        text: "Přílet, auto, pintxos a první večer.",
+        img: "https://images.unsplash.com/photo-1596306499300-0b7b1685b9f6?auto=format&fit=crop&w=700&q=70",
+        maps: "https://www.google.com/maps/search/?api=1&query=Bilbao%2C%20Spain"
+      },
+      gaztelugatxe: {
+        name: "Gaztelugatxe / Urdaibai",
+        coords: [43.4470, -2.7850],
+        text: "Útesy, oceán, procházka a zastávky na pobřeží.",
+        img: "https://images.unsplash.com/photo-1621784564114-6eea05b89863?auto=format&fit=crop&w=700&q=70",
+        maps: "https://www.google.com/maps/search/?api=1&query=San%20Juan%20de%20Gaztelugatxe"
+      },
+      sansebastian: {
+        name: "San Sebastián",
+        coords: [43.3183, -1.9812],
+        text: "La Concha, beach day, pintxos a večerní procházky.",
+        img: "https://images.unsplash.com/photo-1606768485542-73828f1ed799?auto=format&fit=crop&w=700&q=70",
+        maps: "https://www.google.com/maps/search/?api=1&query=San%20Sebastian%2C%20Spain"
+      },
+      hondarribia: {
+        name: "Hondarribia / Pasaia",
+        coords: [43.3623, -1.7910],
+        text: "Krátký výlet, přístav, staré město a pobřeží.",
+        img: "https://images.unsplash.com/photo-1605538883669-825200433431?auto=format&fit=crop&w=700&q=70",
+        maps: "https://www.google.com/maps/search/?api=1&query=Hondarribia%2C%20Spain"
+      },
+      santander: {
+        name: "Santander",
+        coords: [43.4623, -3.8099],
+        text: "Playa del Sardinero, Magdalena a večeře u moře.",
+        img: "https://images.unsplash.com/photo-1596662951482-0c4ba74a6df6?auto=format&fit=crop&w=700&q=70",
+        maps: "https://www.google.com/maps/search/?api=1&query=Santander%2C%20Spain"
+      },
+      picos: {
+        name: "Picos de Europa",
+        coords: [43.2710, -4.9870],
+        text: "Hory, jezera Covadonga a lehčí hiking.",
+        img: "https://images.unsplash.com/photo-1566987279806-0d9267d7282a?auto=format&fit=crop&w=700&q=70",
+        maps: "https://www.google.com/maps/search/?api=1&query=Covadonga%20Lakes%2C%20Asturias%2C%20Spain"
+      },
+      madrid: {
+        name: "Madrid",
+        coords: [40.4168, -3.7038],
+        text: "Volitelně pár dní navíc a možný odlet domů odtud.",
+        img: "https://images.unsplash.com/photo-1539037116277-4db20889f2d4?auto=format&fit=crop&w=700&q=70",
+        maps: "https://www.google.com/maps/search/?api=1&query=Madrid%2C%20Spain"
+      }
+    };
+
+    const map = L.map('map', { zoomControl: false, scrollWheelZoom: true }).setView([43.3, -3.0], 7);
+    L.control.zoom({ position: 'bottomleft' }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    const flight = ['prague','bilbao'];
+    const mainRoute = ['bilbao','gaztelugatxe','sansebastian','hondarribia','santander','picos','bilbao'];
+    const optionalMadrid = ['picos','madrid'];
+    const optionalFlight = ['madrid','prague'];
+
+    L.polyline(flight.map(id => places[id].coords), { color: '#6f8d7b', weight: 3, opacity: .8, dashArray: '3, 12' }).addTo(map);
+    L.polyline(mainRoute.map(id => places[id].coords), { color: '#ad6a63', weight: 4, opacity: .92, dashArray: '8, 9' }).addTo(map);
+    L.polyline(optionalMadrid.map(id => places[id].coords), { color: '#9170a8', weight: 4, opacity: .78, dashArray: '2, 10' }).addTo(map);
+    L.polyline(optionalFlight.map(id => places[id].coords), { color: '#9170a8', weight: 3, opacity: .58, dashArray: '3, 12' }).addTo(map);
+
+    const markers = {};
+    function pin(color){
+      return L.divIcon({ className:'', html:`<div style="width:18px;height:18px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 4px 14px rgba(0,0,0,.28)"></div>`, iconSize:[18,18], iconAnchor:[9,9] });
+    }
+    const routeIcon = pin('#ad6a63');
+    const startIcon = pin('#6f8d7b');
+    const optionalIcon = pin('#9170a8');
+
+    Object.entries(places).forEach(([id, p]) => {
+      const markerIcon = id === 'prague' ? startIcon : (id === 'madrid' ? optionalIcon : routeIcon);
+      markers[id] = L.marker(p.coords, { icon: markerIcon }).addTo(map)
+        .bindPopup(`<div class="popup-img" style="background-image:url('${p.img}')"></div><div class="popup-body"><strong>${p.name}</strong><span>${p.text}</span><a href="${p.maps}" target="_blank" rel="noopener">Otevřít v Google Maps</a></div>`);
+      if(id !== 'prague') L.marker(p.coords, { icon: L.divIcon({ className:'route-label', html:p.name, iconAnchor:[0,-12] }) }).addTo(map);
+    });
+
+    map.fitBounds(L.latLngBounds([...mainRoute.map(id => places[id].coords), places.prague.coords, places.madrid.coords]), { padding: [55,55] });
+
+    function focusPlace(id){
+      const p = places[id];
+      map.flyTo(p.coords, id === 'madrid' ? 6 : (id === 'picos' ? 9 : 11), { duration: .75 });
+      markers[id].openPopup();
+      document.querySelectorAll('.day').forEach(el => el.classList.toggle('active', el.dataset.place === id));
+    }
+
+    document.querySelectorAll('.day').forEach(card => {
+      card.addEventListener('click', e => {
+        if(e.target.tagName.toLowerCase() === 'a') return;
+        focusPlace(card.dataset.place);
+      });
+    });
+  </script>
+</body>
+</html>
