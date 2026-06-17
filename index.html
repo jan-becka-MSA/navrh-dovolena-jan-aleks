@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Northern Spain Romantic Itinerary</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root {
+      --ink: #24313a;
+      --muted: #6d7b82;
+      --paper: #fffaf3;
+      --cream: #f7efe3;
+      --sea: #1d7f91;
+      --sea-dark: #0f5967;
+      --rose: #d66b68;
+      --gold: #c69a46;
+      --forest: #517062;
+      --shadow: 0 18px 45px rgba(28, 43, 52, .14);
+      --radius: 24px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, #f6eee2 0%, #fffaf3 38%, #edf7f5 100%);
+    }
+
+    .hero {
+      min-height: 96vh;
+      padding: 34px clamp(18px, 4vw, 64px);
+      background:
+        radial-gradient(circle at 15% 18%, rgba(214, 107, 104, .20), transparent 28%),
+        radial-gradient(circle at 82% 10%, rgba(29, 127, 145, .25), transparent 30%),
+        linear-gradient(rgba(19, 41, 50, .18), rgba(19, 41, 50, .36)),
+        url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=2200&q=80') center/cover;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+
+    .pill {
+      padding: 10px 15px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.17);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,.28);
+    }
+
+    .hero-content {
+      max-width: 880px;
+      padding: 74px 0 24px;
+    }
+
+    .kicker {
+      text-transform: uppercase;
+      font-size: .82rem;
+      letter-spacing: .18em;
+      font-weight: 800;
+      color: #ffe8b8;
+    }
+
+    h1, h2, h3 {
+      font-family: "Playfair Display", Georgia, serif;
+      line-height: 1.02;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(3.2rem, 9vw, 7.4rem);
+      margin-top: 12px;
+      text-shadow: 0 9px 38px rgba(0,0,0,.23);
+    }
+
+    .hero p {
+      font-size: clamp(1.05rem, 2vw, 1.35rem);
+      max-width: 700px;
+      line-height: 1.7;
+      margin: 24px 0 32px;
+    }
+
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      color: var(--ink);
+      background: #fff7e8;
+      border-radius: 999px;
+      padding: 13px 18px;
+      font-weight: 800;
+      box-shadow: 0 12px 28px rgba(0,0,0,.14);
+    }
+    .button.secondary { background: rgba(255,255,255,.16); color: white; border: 1px solid rgba(255,255,255,.28); }
+
+    main { padding: 64px clamp(18px, 4vw, 64px); }
+    section { max-width: 1180px; margin: 0 auto 72px; }
+    .section-head { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 24px; }
+    h2 { font-size: clamp(2.1rem, 5vw, 4rem); color: var(--sea-dark); }
+    .lead { color: var(--muted); font-size: 1.05rem; line-height: 1.8; max-width: 670px; }
+
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 22px; }
+    .card {
+      background: rgba(255,255,255,.82);
+      border: 1px solid rgba(36,49,58,.08);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .summary-card { grid-column: span 3; padding: 24px; }
+    .summary-card strong { display: block; color: var(--sea-dark); margin-bottom: 7px; font-size: 1.03rem; }
+    .summary-card span { color: var(--muted); line-height: 1.55; }
+
+    #map {
+      width: 100%;
+      min-height: 560px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 10px solid white;
+      z-index: 0;
+    }
+    .map-note { margin-top: 14px; color: var(--muted); font-size: .95rem; }
+
+    .timeline { position: relative; margin-top: 28px; }
+    .timeline:before {
+      content: "";
+      position: absolute;
+      left: 24px;
+      top: 10px;
+      bottom: 10px;
+      width: 3px;
+      border-radius: 999px;
+      background: linear-gradient(var(--rose), var(--sea), var(--forest));
+    }
+    .day {
+      position: relative;
+      margin: 0 0 22px 0;
+      padding-left: 66px;
+    }
+    .dot {
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      width: 31px;
+      height: 31px;
+      border-radius: 50%;
+      background: var(--paper);
+      border: 7px solid var(--rose);
+      box-shadow: 0 6px 18px rgba(0,0,0,.12);
+    }
+    .day-card { padding: 24px; }
+    .day-card h3 { font-size: clamp(1.45rem, 3vw, 2.2rem); color: var(--ink); margin-bottom: 8px; }
+    .date-line { color: var(--rose); font-weight: 800; text-transform: uppercase; font-size: .84rem; letter-spacing: .12em; }
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+    .tag { font-size: .83rem; font-weight: 700; padding: 7px 10px; border-radius: 999px; background: #eef7f5; color: var(--sea-dark); }
+    .day-card p, .day-card li { color: var(--muted); line-height: 1.75; }
+    .day-card ul { margin: 12px 0 0 20px; padding: 0; }
+
+    .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .photo {
+      min-height: 260px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      background-size: cover;
+      background-position: center;
+      box-shadow: var(--shadow);
+      position: relative;
+    }
+    .photo:after { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent 35%, rgba(0,0,0,.56)); }
+    .photo span { position: absolute; left: 18px; right: 18px; bottom: 18px; color: white; font-weight: 800; z-index: 1; font-size: 1.15rem; }
+
+    .love-note {
+      background: linear-gradient(135deg, #fff4ed, #eaf7f6);
+      padding: clamp(28px, 5vw, 52px);
+      border-radius: 34px;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+    .love-note h2 { color: var(--rose); }
+    .love-note p { margin: 18px auto 0; color: var(--muted); max-width: 760px; line-height: 1.9; font-size: 1.08rem; }
+
+    footer { padding: 26px clamp(18px, 4vw, 64px) 46px; color: var(--muted); text-align: center; font-size: .9rem; }
+    .leaflet-popup-content { font-family: Inter, sans-serif; line-height: 1.45; }
+    .leaflet-popup-content strong { color: var(--sea-dark); }
+
+    @media (max-width: 850px) {
+      .summary-card { grid-column: span 6; }
+      .photo-grid { grid-template-columns: 1fr; }
+      .section-head { display: block; }
+      #map { min-height: 430px; }
+    }
+    @media (max-width: 560px) {
+      .summary-card { grid-column: span 12; }
+      .nav { align-items: flex-start; flex-direction: column; }
+      .timeline:before { left: 18px; }
+      .day { padding-left: 52px; }
+      .dot { left: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <nav class="nav">
+      <div class="pill">Prague ✈ Bilbao</div>
+      <div class="pill">Northern Spain · 8 romantic days</div>
+    </nav>
+    <div class="hero-content">
+      <div class="kicker">A little coastal escape for us</div>
+      <h1>Our Basque Coast Getaway</h1>
+      <p>Beaches, sunset walks, pintxos, quiet mountain views, and a road trip across the green north of Spain — made for slow mornings and beautiful evenings together.</p>
+      <div class="hero-actions">
+        <a class="button" href="#map-section">See the map</a>
+        <a class="button secondary" href="#itinerary">Open itinerary</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <div class="section-head">
+        <div>
+          <h2>The idea</h2>
+          <p class="lead">A relaxed 8-day loop: fly from Prague to Bilbao, start with food and art, spend the most romantic nights in San Sebastián, add a dramatic Basque coast stop, enjoy one mountain-hiking day in Picos de Europa, and finish with beaches in Santander before returning to Bilbao.</p>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="card summary-card"><strong>Best mood</strong><span>Romantic coastal walks, beaches, dinners, and scenic drives.</span></div>
+        <div class="card summary-card"><strong>Trip length</strong><span>8 days / 7 nights, easily expandable to 9 days.</span></div>
+        <div class="card summary-card"><strong>Transport</strong><span>Flight to Bilbao + rental car after San Sebastián.</span></div>
+        <div class="card summary-card"><strong>Pace</strong><span>Slow enough to relax, with only 1–2 hiking/sightseeing days.</span></div>
+      </div>
+    </section>
+
+    <section id="map-section">
+      <div class="section-head">
+        <div>
+          <h2>Route map</h2>
+          <p class="lead">Click each marker to see what happens there. The curved-feeling line shows the order of the trip from Prague to Bilbao and through the coast and mountains.</p>
+        </div>
+      </div>
+      <div id="map"></div>
+      <p class="map-note">Tip: edit the dates in the HTML near each timeline card once your exact flights and hotel nights are confirmed.</p>
+    </section>
+
+    <section id="itinerary">
+      <div class="section-head">
+        <div>
+          <h2>Day-by-day itinerary</h2>
+          <p class="lead">Dates are placeholders for now — replace them with your real travel dates before sending this page.</p>
+        </div>
+      </div>
+
+      <div class="timeline">
+        <article class="day"><div class="dot"></div><div class="card day-card"><div class="date-line">Day 1 · [Add date]</div><h3>Prague → Bilbao</h3><div class="tags"><span class="tag">Flight day</span><span class="tag">Guggenheim</span><span class="tag">First pintxos</span></div><p>Fly from Prague to Bilbao, settle in, and keep the first evening easy. Walk along the river, see the Guggenheim from outside at golden hour, then have a gentle pintxos dinner in Casco Viejo.</p></div></article>
+
+        <article class="day"><div class="dot"></div><div class="card day-card"><div class="date-line">Days 2–4 · [Add dates]</div><h3>San Sebastián: beaches, sunsets, and food</h3><div class="tags"><span class="tag">La Concha</span><span class="tag">Old Town</span><span class="tag">Romantic base</span></div><p>Train or drive to San Sebastián and stay for three nights. This is the heart of the trip: slow beach mornings, La Concha promenade, Monte Igueldo views, and pintxos evenings in the Old Town.</p><ul><li>Sunset walk from La Concha to Peine del Viento.</li><li>One relaxed beach afternoon at La Concha or Ondarreta.</li><li>Optional half-day to Hondarribia for colorful streets and a waterfront lunch.</li></ul></div></article>
+
+        <article class="day"><div class="dot"></div><div class="card day-card"><div class="date-line">Day 5 · [Add date]</div><h3>Gaztelugatxe + Urdaibai coast</h3><div class="tags"><span class="tag">Cliffs</span><span class="tag">Sea views</span><span class="tag">Photo stop</span></div><p>Leave San Sebastián and follow the coast west. Stop at San Juan de Gaztelugatxe for the dramatic island walk, then continue through the Urdaibai area — Mundaka and the coast around Bermeo are perfect for a beautiful, not-too-rushed day.</p></div></article>
+
+        <article class="day"><div class="dot"></div><div class="card day-card"><div class="date-line">Day 6 · [Add date]</div><h3>Picos de Europa: one mountain day</h3><div class="tags"><span class="tag">Hiking</span><span class="tag">Mountain views</span><span class="tag">Nature</span></div><p>Drive into the mountains and stay around Cangas de Onís. Keep the hiking scenic rather than exhausting: Covadonga Lakes or a shorter viewpoint walk is ideal for one memorable mountain day without losing the relaxed vacation feeling.</p></div></article>
+
+        <article class="day"><div class="dot"></div><div class="card day-card"><div class="date-line">Days 7–8 · [Add dates]</div><h3>Santander: beach finale</h3><div class="tags"><span class="tag">Relax</span><span class="tag">Seafood</span><span class="tag">Beach walks</span></div><p>Finish with two nights by the sea in Santander. Walk around the Magdalena Peninsula, relax on Sardinero Beach, and make the final evening all about a long dinner and a slow walk by the water.</p></div></article>
+
+        <article class="day"><div class="dot"></div><div class="card day-card"><div class="date-line">Final morning · [Add date]</div><h3>Return to Bilbao → Prague</h3><div class="tags"><span class="tag">Coffee</span><span class="tag">Flight home</span></div><p>Drive back to Bilbao Airport, return the car, and fly home to Prague with a phone full of coastline photos.</p></div></article>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div>
+          <h2>Moments to look forward to</h2>
+          <p class="lead">A few highlights to make the page feel like an invitation, not just a schedule.</p>
+        </div>
+      </div>
+      <div class="photo-grid">
+        <div class="photo" style="background-image:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80')"><span>Sunset walks by the sea</span></div>
+        <div class="photo" style="background-image:url('https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=1200&q=80')"><span>Green coast and ocean air</span></div>
+        <div class="photo" style="background-image:url('https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1200&q=80')"><span>One wild mountain day</span></div>
+      </div>
+    </section>
+
+    <section class="love-note">
+      <h2>For us</h2>
+      <p>I thought this could be our first little adventure together: not too rushed, not too planned, just enough beaches, food, views, and quiet moments to make northern Spain feel like our own story for a week.</p>
+    </section>
+  </main>
+
+  <footer>
+    Built as a GitHub Pages-ready HTML itinerary. Map uses OpenStreetMap tiles via Leaflet. Replace placeholder dates before sharing.
+  </footer>
+
+  <script>
+    const stops = [
+      { name: "Prague", days: "Start", note: "Flight departure", coords: [50.0755, 14.4378] },
+      { name: "Bilbao", days: "Day 1", note: "Arrival, river walk, Guggenheim, first pintxos", coords: [43.2630, -2.9350] },
+      { name: "San Sebastián", days: "Days 2–4", note: "La Concha, Old Town, sunsets, romantic base", coords: [43.3183, -1.9812] },
+      { name: "Hondarribia", days: "Optional Day 3/4", note: "Colorful old town and waterfront lunch", coords: [43.3687, -1.7964] },
+      { name: "San Juan de Gaztelugatxe", days: "Day 5", note: "Dramatic coastal walk and cliff views", coords: [43.4470, -2.7850] },
+      { name: "Urdaibai / Mundaka", days: "Day 5", note: "Coastal villages, surf views, estuary scenery", coords: [43.4082, -2.6996] },
+      { name: "Picos de Europa / Cangas de Onís", days: "Day 6", note: "Covadonga Lakes or a scenic hike", coords: [43.3514, -5.1290] },
+      { name: "Santander", days: "Days 7–8", note: "Sardinero Beach and Magdalena Peninsula", coords: [43.4623, -3.8099] },
+      { name: "Bilbao Airport", days: "Final morning", note: "Return flight to Prague", coords: [43.3011, -2.9106] }
+    ];
+
+    const map = L.map('map', { scrollWheelZoom: false }).setView([45.8, 1.8], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const icons = {
+      flight: L.divIcon({ className: 'custom-marker', html: '<div style="background:#d66b68;color:#fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-weight:900;box-shadow:0 6px 18px rgba(0,0,0,.25)">✈</div>', iconSize: [34,34], iconAnchor: [17,17] }),
+      stop: L.divIcon({ className: 'custom-marker', html: '<div style="background:#1d7f91;color:#fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-weight:900;box-shadow:0 6px 18px rgba(0,0,0,.25)">♥</div>', iconSize: [34,34], iconAnchor: [17,17] }),
+      mountain: L.divIcon({ className: 'custom-marker', html: '<div style="background:#517062;color:#fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-weight:900;box-shadow:0 6px 18px rgba(0,0,0,.25)">▲</div>', iconSize: [34,34], iconAnchor: [17,17] })
+    };
+
+    stops.forEach((stop, index) => {
+      const icon = index === 0 || stop.name.includes('Airport') ? icons.flight : stop.name.includes('Picos') ? icons.mountain : icons.stop;
+      L.marker(stop.coords, { icon }).addTo(map)
+        .bindPopup(`<strong>${stop.name}</strong><br>${stop.days}<br>${stop.note}`);
+    });
+
+    const flightLine = [stops[0].coords, stops[1].coords];
+    L.polyline(flightLine, { color: '#d66b68', weight: 3, opacity: .75, dashArray: '9, 10' }).addTo(map);
+
+    const roadRoute = stops.slice(1).map(s => s.coords);
+    L.polyline(roadRoute, { color: '#1d7f91', weight: 5, opacity: .82 }).addTo(map);
+
+    const bounds = L.latLngBounds(stops.map(s => s.coords));
+    map.fitBounds(bounds, { padding: [36, 36] });
+  </script>
+</body>
+</html>
